@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOTELOK ANIMAL QUANT</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; }
+        .card { background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .super-fijo { font-size: 1.8rem; font-weight: bold; color: #4ade80; text-align: center; }
+        button { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 6px; width: 100%; font-size: 1rem; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0369a1; }
+        input, select { width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 4px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SOTELOK ANIMAL QUANT</h1>
+        
+        <div class="card">
+            <h3>🎯 Pronóstico Inteligente (Markov)</h3>
+            <button onclick="cargarPrediccion()">Obtener Predicción</button>
+            <div id="resultado-prediccion" style="margin-top: 15px;">
+                <p>Presiona el botón para calcular los probables.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📥 Cargar Resultados del Día</h3>
+            <label>Fecha:</label>
+            <input type="date" id="input-fecha">
+            <label>Números (separados por coma):</label>
+            <input type="text" id="input-numeros" placeholder="Ej: 12, 5, 24, 0, 36">
+            <button onclick="enviarResultados()">Guardar en la Base de Datos</button>
+            <p id="status-carga" style="font-size: 0.9rem; text-align: center; margin-top: 5px;"></p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://activo-sotelok-quant.onrender.com";
+
+        async function cargarPrediccion() {
+            const div = document.getElementById('resultado-prediccion');
+            div.innerHTML = "<p>Calculando matrices de transición...</p>";
+            try {
+                const res = await fetch(`${API_URL}/api/prediccion`);
+                const data = await res.json();
+                
+                if(data.error) {
+                    div.innerHTML = `<p style="color: #f87171;">${data.error}</p>`;
+                    return;
+                }
+
+                div.innerHTML = `
+                    <p><strong>Último Sorteo:</strong> ${data.ultimo_resultado.numero} - ${data.ultimo_resultado.animal}</p>
+                    <div class="super-fijo">SUPER FIJO: ${data.pronostico.super_fijo.numero} (${data.pronostico.super_fijo.animal})</div>
+                    <p style="margin-top:10px;"><strong>Secundarios / Tripletas:</strong></p>
+                    <ul>
+                        <li>${data.pronostico.secundarios_tripleta[0].numero} - ${data.pronostico.secundarios_tripleta[0].animal}</li>
+                        <li>${data.pronostico.secundarios_tripleta[1].numero} - ${data.pronostico.secundarios_tripleta[1].animal}</li>
+                    </ul>
+                `;
+            } catch (e) {
+                div.innerHTML = `<p style="color: #f87171;">Error de conexión con la API.</p>`;
+            }
+        }
+
+        async function enviarResultados() {
+            const fecha = document.getElementById('input-fecha').value;
+            const numerosStr = document.getElementById('input-numeros').value;
+            const status = document.getElementById('status-carga');
+
+            if(!fecha || !numerosStr) {
+                status.style.color = "#f87171";
+                status.innerText = "Completa todos los campos.";
+                return;
+            }
+
+            const numeros = numerosStr.split(',').map(n => parseInt(n.trim()));
+
+            try {
+                const res = await fetch(`${API_URL}/api/cargar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, numeros })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    status.style.color = "#4ade80";
+                    status.innerText = data.message;
+                } else {
+                    status.style.color = "#f87171";
+                    status.innerText = data.error;
+                }
+            } catch(e) {
+                status.style.color = "#f87171";
+                status.innerText = "Error al enviar los datos.";
+            }
+        }
+    </script>
+</body>
+</html>
